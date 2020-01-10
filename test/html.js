@@ -350,6 +350,12 @@ describe('HTML Parser', function () {
 			const root = parseHTML(html);
 			root.toString().should.eql(html)
 		});
+
+		it('#toString({comments:true)', function () {
+			const html = '<p id="id" data-feidao-actions="ssss"><!-- plop --><a class=\'cls\'>Hello</a><ul><li>aaaaa</li></ul><span>bbb</span></p>';
+			const root = parseHTML(html);
+			root.toString().should.eql(html)
+		});
 	});
 
 	describe('Custom Element', function () {

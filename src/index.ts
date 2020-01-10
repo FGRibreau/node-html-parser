@@ -2,7 +2,8 @@ import { decode } from 'he';
 
 export enum NodeType {
 	ELEMENT_NODE = 1,
-	TEXT_NODE = 3
+	TEXT_NODE = 3,
+	COMMENT_NODE = 8,
 }
 
 /**
@@ -51,6 +52,39 @@ export class TextNode extends Node {
 		return this.text;
 	}
 }
+export class CommentNode extends Node {
+	constructor(value: string) {
+		super();
+		this.rawText = value;
+	}
+
+	/**
+	 * Node Type declaration.
+	 * @type {Number}
+	 */
+	nodeType = NodeType.TEXT_NODE;
+
+	/**
+	 * Get unescaped text value of current node and its children.
+	 * @return {string} text content
+	 */
+	get text() {
+		return decode(this.rawText);
+	}
+
+	/**
+	 * Detect if the node contains only white space.
+	 * @return {bool}
+	 */
+	get isWhitespace() {
+		return /^(\s|&nbsp;)*$/.test(this.rawText);
+	}
+
+	toString() {
+		return this.text;
+	}
+}
+
 
 const kBlockElements = {
 	div: true,
@@ -182,6 +216,18 @@ export class HTMLElement extends Node {
 				}
 			} else if (node.nodeType === NodeType.TEXT_NODE) {
 				if ((node as TextNode).isWhitespace) {
+					// Whitespace node, postponed output
+					(currentBlock as any).prependWhitespace = true;
+				} else {
+					let text = node.text;
+					if ((currentBlock as any).prependWhitespace) {
+						text = ' ' + text;
+						(currentBlock as any).prependWhitespace = false;
+					}
+					currentBlock.push(text);
+				}
+			} else if(node.nodeType === NodeType.COMMENT_NODE) {
+				if ((node as CommentNode).isWhitespace) {
 					// Whitespace node, postponed output
 					(currentBlock as any).prependWhitespace = true;
 				} else {
@@ -771,7 +817,8 @@ export function parse(data: string, options?: {
 		}
 		lastTextPos = kMarkupPattern.lastIndex;
 		if (match[0][1] == '!') {
-			// this is a comment
+			const text = data.substring(lastTextPos, kMarkupPattern.lastIndex - match[0].length);
+			currentParent.appendChild(new TextNode(text));
 			continue;
 		}
 		if (options.lowerCaseTagName)
